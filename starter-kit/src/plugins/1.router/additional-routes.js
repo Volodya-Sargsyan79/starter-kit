@@ -12,7 +12,7 @@ export const redirects = [
       const userRole = userData.value?.role
       if (userRole === 'admin')
         return { name: 'root' }
-      if (userRole === 'client')
+      if (userRole === 'store owner')
         return { name: 'access-control' }
       
       return { name: 'login', query: to.query }

@@ -1,5 +1,8 @@
 <script setup>
 import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
+import {inject} from "vue"
+
+
 
 const props = defineProps({
   isDrawerOpen: {
@@ -13,17 +16,20 @@ const emit = defineEmits([
   'userData',
 ])
 
+const credentials = ref({
+  first_name: '',
+  last_name: '',
+  username: '',
+  email: '',
+  password: '',
+  repeatPassword: '',
+  role: '',
+})
+
+const axios = inject("axios")
+
 const isFormValid = ref(false)
 const refForm = ref()
-const fullName = ref('')
-const userName = ref('')
-const email = ref('')
-const company = ref('')
-const country = ref()
-const contact = ref('')
-const role = ref()
-const plan = ref()
-const status = ref()
 
 // 👉 drawer close
 const closeNavigationDrawer = () => {
@@ -35,28 +41,38 @@ const closeNavigationDrawer = () => {
 }
 
 const onSubmit = () => {
-  refForm.value?.validate().then(({ valid }) => {
-    if (valid) {
-      emit('userData', {
-        id: 0,
-        fullName: fullName.value,
-        company: company.value,
-        role: role.value,
-        username: userName.value,
-        country: country.value,
-        contact: contact.value,
-        email: email.value,
-        currentPlan: plan.value,
-        status: status.value,
-        avatar: '',
-      })
-      emit('update:isDrawerOpen', false)
-      nextTick(() => {
-        refForm.value?.reset()
-        refForm.value?.resetValidation()
-      })
-    }
-  })
+  const formData = {
+    username: credentials.value.username,
+    email: credentials.value.email,
+    password: credentials.value.password,
+    is_admin: false,
+    is_store_owner: true,
+  }
+
+  console.log("Form Data:", formData) // Add this to inspect the data
+
+  const token = localStorage.getItem("token")
+
+  axios
+    .post("/api/v1/users/add-store-owner/", formData)
+    .then(response => {
+      console.log("User added successfully:", response.data)
+    })
+    .catch((error) => {
+      errors.value = [] // Clear previous errors
+      if (error.response) {
+        for (const property in error.response.data) {
+          errors.value.push(`${property}: ${error.response.data[property]}`)
+        }
+        console.error("Error response:", error.response)
+      } else if (error.message) {
+        errors.value.push("Something went wrong. Please try again!")
+        console.error("Error message:", error.message)
+      } else {
+        errors.value.push("Something went wrong. Please try again!")
+        console.error("Error:", error)
+      }
+    })
 }
 
 const handleDrawerModelValueUpdate = val => {
@@ -91,12 +107,22 @@ const handleDrawerModelValueUpdate = val => {
             @submit.prevent="onSubmit"
           >
             <VRow>
-              <!-- 👉 Full name -->
+              <!-- 👉 First name -->
               <VCol cols="12">
                 <VTextField
-                  v-model="fullName"
+                  v-model="credentials.first_name"
                   :rules="[requiredValidator]"
-                  label="Full Name"
+                  label="First Name"
+                  placeholder="John Doe"
+                />
+              </VCol>
+
+              <!-- 👉 Last name -->
+              <VCol cols="12">
+                <VTextField
+                  v-model="credentials.last_name"
+                  :rules="[requiredValidator]"
+                  label="Last Name"
                   placeholder="John Doe"
                 />
               </VCol>
@@ -104,7 +130,7 @@ const handleDrawerModelValueUpdate = val => {
               <!-- 👉 Username -->
               <VCol cols="12">
                 <VTextField
-                  v-model="userName"
+                  v-model="credentials.username"
                   :rules="[requiredValidator]"
                   label="Username"
                   placeholder="Johndoe"
@@ -114,75 +140,44 @@ const handleDrawerModelValueUpdate = val => {
               <!-- 👉 Email -->
               <VCol cols="12">
                 <VTextField
-                  v-model="email"
+                  v-model="credentials.email"
                   :rules="[requiredValidator, emailValidator]"
                   label="Email"
+                  :type="email"
                   placeholder="johndoe@email.com"
                 />
               </VCol>
 
-              <!-- 👉 company -->
+              <!-- 👉 Passwor -->
               <VCol cols="12">
                 <VTextField
-                  v-model="company"
+                  v-model="credentials.password"
+                  label="Password"
+                  placeholder="············"
                   :rules="[requiredValidator]"
-                  label="Company"
-                  placeholder="Pixinvent"
+                  :type="'password'"
                 />
               </VCol>
 
-              <!-- 👉 Country -->
-              <VCol cols="12">
-                <VSelect
-                  v-model="country"
-                  label="Select Country"
-                  placeholder="Select Country"
-                  :rules="[requiredValidator]"
-                  :items="['United States', 'United Kingdom', 'France']"
-                />
-              </VCol>
-
-              <!-- 👉 Contact -->
+              <!-- 👉 Repeat Password -->
               <VCol cols="12">
                 <VTextField
-                  v-model="contact"
-                  type="number"
+                  v-model="credentials.repeatPassword"
+                  label="Repeat Password"
+                  placeholder="············"
                   :rules="[requiredValidator]"
-                  label="Contact"
-                  placeholder="+1-541-754-3010"
+                  :type="'password'"
                 />
               </VCol>
 
               <!-- 👉 Role -->
               <VCol cols="12">
                 <VSelect
-                  v-model="role"
+                  v-model="credentials.role"
                   label="Select Role"
                   placeholder="Select Role"
                   :rules="[requiredValidator]"
-                  :items="['Admin', 'Author', 'Editor', 'Maintainer', 'Subscriber']"
-                />
-              </VCol>
-
-              <!-- 👉 Plan -->
-              <VCol cols="12">
-                <VSelect
-                  v-model="plan"
-                  label="Select Plan"
-                  placeholder="Select Plan"
-                  :rules="[requiredValidator]"
-                  :items="['Basic', 'Company', 'Enterprise', 'Team']"
-                />
-              </VCol>
-
-              <!-- 👉 Status -->
-              <VCol cols="12">
-                <VSelect
-                  v-model="status"
-                  label="Select Status"
-                  placeholder="Select Status"
-                  :rules="[requiredValidator]"
-                  :items="[{ title: 'Active', value: 'Active' }, { title: 'Inactive', value: 'Inactive' }, { title: 'Pending', value: 'Pending' }]"
+                  :items="['Admin', 'Store owner']"
                 />
               </VCol>
 

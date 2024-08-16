@@ -1,5 +1,6 @@
 <script setup>
 import AddNewUserDrawer from '@/views/apps/user/list/AddNewUserDrawer.vue'
+import {inject} from "vue"
 
 // 👉 Store
 const searchQuery = ref('')
@@ -13,6 +14,7 @@ const page = ref(1)
 const sortBy = ref()
 const orderBy = ref()
 const selectedRows = ref([])
+const axios = inject("axios")
 
 const updateOptions = options => {
   page.value = options.page
@@ -35,10 +37,6 @@ const headers = [
     key: 'role',
   },
   {
-    title: 'Plan',
-    key: 'plan',
-  },
-  {
     title: 'Status',
     key: 'status',
   },
@@ -49,24 +47,44 @@ const headers = [
   },
 ]
 
-const {
-  data: usersData,
-  execute: fetchUsers,
-} = await useApi(createUrl('/apps/users', {
-  query: {
-    q: searchQuery,
-    status: selectedStatus,
-    plan: selectedPlan,
-    role: selectedRole,
-    itemsPerPage,
-    page,
-    sortBy,
-    orderBy,
-  },
-}))
+const users = ref([])
 
-const users = computed(() => usersData.value.users)
-const totalUsers = computed(() => usersData.value.totalUsers)
+async function getUser() {
+  const token = localStorage.getItem("token")
+  try {
+    const response = await axios.get("/api/v1/users/", {
+      headers: {
+        Authorization: `Token ${token}`,
+      },
+    })
+    
+    users.value = response.data
+
+  } catch (error) {
+    console.log(error.response || error)
+  }
+} getUser()
+
+console.log(users, 132214)
+
+// const {
+//   data: usersData,
+//   execute: fetchUsers,
+// } = await useApi(createUrl('/apps/users', {
+//   query: {
+//     q: searchQuery,
+//     status: selectedStatus,
+//     plan: selectedPlan,
+//     role: selectedRole,
+//     itemsPerPage,
+//     page,
+//     sortBy,
+//     orderBy,
+//   },
+// }))
+
+// const users = computed(() => usersData.value.users)
+// const totalUsers = computed(() => usersData.value.totalUsers)
 
 // 👉 search filters
 const roles = [
@@ -92,25 +110,6 @@ const roles = [
   },
 ]
 
-const plans = [
-  {
-    title: 'Basic',
-    value: 'basic',
-  },
-  {
-    title: 'Company',
-    value: 'company',
-  },
-  {
-    title: 'Enterprise',
-    value: 'enterprise',
-  },
-  {
-    title: 'Team',
-    value: 'team',
-  },
-]
-
 const status = [
   {
     title: 'Pending',
@@ -126,164 +125,47 @@ const status = [
   },
 ]
 
-const resolveUserRoleVariant = role => {
-  const roleLowerCase = role.toLowerCase()
-  if (roleLowerCase === 'subscriber')
-    return {
-      color: 'success',
-      icon: 'ri-user-line',
-    }
-  if (roleLowerCase === 'author')
-    return {
-      color: 'error',
-      icon: 'ri-computer-line',
-    }
-  if (roleLowerCase === 'maintainer')
-    return {
-      color: 'info',
-      icon: 'ri-pie-chart-line',
-    }
-  if (roleLowerCase === 'editor')
-    return {
-      color: 'warning',
-      icon: 'ri-edit-box-line',
-    }
-  if (roleLowerCase === 'admin')
-    return {
-      color: 'primary',
-      icon: 'ri-vip-crown-line',
-    }
-  
-  return {
-    color: 'success',
-    icon: 'ri-user-line',
-  }
-}
+// const resolveUserRoleVariant = role => {
+//   const roleLowerCase = role.toLowerCase()
+//   if (roleLowerCase === 'subscriber')
+//     return {
+//       color: 'success',
+//       icon: 'ri-user-line',
+//     }
+//   if (roleLowerCase === 'author')
+//     return {
+//       color: 'error',
+//       icon: 'ri-computer-line',
+//     }
+//   if (roleLowerCase === 'maintainer')
+//     return {
+//       color: 'info',
+//       icon: 'ri-pie-chart-line',
+//     }
+//   if (roleLowerCase === 'editor')
+//     return {
+//       color: 'warning',
+//       icon: 'ri-edit-box-line',
+//     }
+//   if (roleLowerCase === 'admin')
+//     return {
+//       color: 'primary',
+//       icon: 'ri-vip-crown-line',
+//     }
 
-const resolveUserStatusVariant = stat => {
-  const statLowerCase = stat.toLowerCase()
-  if (statLowerCase === 'pending')
-    return 'warning'
-  if (statLowerCase === 'active')
-    return 'success'
-  if (statLowerCase === 'inactive')
-    return 'secondary'
-  
-  return 'primary'
-}
+//   return {
+//     color: 'success',
+//     icon: 'ri-user-line',
+//   }
+// }
 
-const isAddNewUserDrawerVisible = ref(false)
+// const isAddNewUserDrawerVisible = ref(false)
 
-const addNewUser = async userData => {
 
-  // userListStore.addUser(userData)
-  await $api('/apps/users', {
-    method: 'POST',
-    body: userData,
-  })
-
-  // Refetch User
-  fetchUsers()
-}
-
-const deleteUser = async id => {
-  await $api(`/apps/users/${ id }`, { method: 'DELETE' })
-
-  // Delete from selectedRows
-  const index = selectedRows.value.findIndex(row => row === id)
-  if (index !== -1)
-    selectedRows.value.splice(index, 1)
-
-  // Refetch User
-  fetchUsers()
-}
-
-const widgetData = ref([
-  {
-    title: 'Session',
-    value: '21,459',
-    change: 29,
-    desc: 'Total Users',
-    icon: 'ri-group-line',
-    iconColor: 'primary',
-  },
-  {
-    title: 'Paid Users',
-    value: '4,567',
-    change: 18,
-    desc: 'Last Week Analytics',
-    icon: 'ri-user-add-line',
-    iconColor: 'error',
-  },
-  {
-    title: 'Active Users',
-    value: '19,860',
-    change: -14,
-    desc: 'Last Week Analytics',
-    icon: 'ri-user-follow-line',
-    iconColor: 'success',
-  },
-  {
-    title: 'Pending Users',
-    value: '237',
-    change: 42,
-    desc: 'Last Week Analytics',
-    icon: 'ri-user-search-line',
-    iconColor: 'warning',
-  },
-])
 </script>
 
 <template>
   <section>
-    <!-- 👉 Widgets -->
-    <div class="d-flex mb-6">
-      <VRow>
-        <template
-          v-for="(data, id) in widgetData"
-          :key="id"
-        >
-          <VCol
-            cols="12"
-            md="3"
-            sm="6"
-          >
-            <VCard>
-              <VCardText>
-                <div class="d-flex justify-space-between">
-                  <div class="d-flex flex-column gap-y-1">
-                    <span class="text-base text-high-emphasis">{{ data.title }}</span>
-                    <h4 class="text-h4 d-flex align-center gap-2">
-                      {{ data.value }}
-                      <span
-                        class="text-base font-weight-regular"
-                        :class="data.change > 0 ? 'text-success' : 'text-error'"
-                      >({{ prefixWithPlus(data.change) }}%)</span>
-                    </h4>
-
-                    <p class="text-sm mb-0">
-                      {{ data.desc }}
-                    </p>
-                  </div>
-                  <VAvatar
-                    :color="data.iconColor"
-                    variant="tonal"
-                    rounded
-                    size="42"
-                  >
-                    <VIcon
-                      :icon="data.icon"
-                      size="26"
-                    />
-                  </VAvatar>
-                </div>
-              </VCardText>
-            </VCard>
-          </VCol>
-        </template>
-      </VRow>
-    </div>
-
     <VCard class="mb-6">
       <VCardItem class="pb-4">
         <VCardTitle>Filters</VCardTitle>
@@ -304,20 +186,7 @@ const widgetData = ref([
               clear-icon="ri-close-line"
             />
           </VCol>
-          <!-- 👉 Select Plan -->
-          <VCol
-            cols="12"
-            sm="4"
-          >
-            <VSelect
-              v-model="selectedPlan"
-              label="Select Plan"
-              placeholder="Select Plan"
-              :items="plans"
-              clearable
-              clear-icon="ri-close-line"
-            />
-          </VCol>
+
           <!-- 👉 Select Status -->
           <VCol
             cols="12"
@@ -338,14 +207,6 @@ const widgetData = ref([
       <VDivider />
 
       <VCardText class="d-flex flex-wrap gap-4 align-center">
-        <!-- 👉 Export button -->
-        <VBtn
-          variant="outlined"
-          color="secondary"
-          prepend-icon="ri-upload-2-line"
-        >
-          Export
-        </VBtn>
         <VSpacer />
         <div class="d-flex align-center gap-4 flex-wrap">
           <!-- 👉 Search  -->
@@ -389,7 +250,7 @@ const widgetData = ref([
                 v-if="item.avatar"
                 :src="item.avatar"
               />
-              <span v-else>{{ avatarText(item.fullName) }}</span>
+              <span v-else>{{ avatarText(item.username) }}</span>
             </VAvatar>
 
             <div class="d-flex flex-column">
@@ -397,78 +258,12 @@ const widgetData = ref([
                 :to="{ name: 'apps-user-view-id', params: { id: item.id } }"
                 class="text-link text-base font-weight-medium"
               >
-                {{ item.fullName }}
+                {{ item.first_name }} {{ item.last_name }}
               </RouterLink>
 
               <span class="text-sm text-medium-emphasis">@{{ item.username }}</span>
             </div>
           </div>
-        </template>
-        <!-- Role -->
-        <template #item.role="{ item }">
-          <div class="d-flex gap-2">
-            <VIcon
-              :icon="resolveUserRoleVariant(item.role).icon"
-              :color="resolveUserRoleVariant(item.role).color"
-              size="22"
-            />
-            <span class="text-capitalize text-high-emphasis">{{ item.role }}</span>
-          </div>
-        </template>
-        <!-- Plan -->
-        <template #item.plan="{ item }">
-          <span class="text-capitalize text-high-emphasis">{{ item.currentPlan }}</span>
-        </template>
-        <!-- Status -->
-        <template #item.status="{ item }">
-          <VChip
-            :color="resolveUserStatusVariant(item.status)"
-            size="small"
-            class="text-capitalize"
-          >
-            {{ item.status }}
-          </VChip>
-        </template>
-
-        <!-- Actions -->
-        <template #item.actions="{ item }">
-          <IconBtn
-            size="small"
-            @click="deleteUser(item.id)"
-          >
-            <VIcon icon="ri-delete-bin-7-line" />
-          </IconBtn>
-
-          <IconBtn
-            size="small"
-            :to="{ name: 'apps-user-view-id', params: { id: item.id } }"
-          >
-            <VIcon icon="ri-eye-line" />
-          </IconBtn>
-
-          <IconBtn
-            size="small"
-            color="medium-emphasis"
-          >
-            <VIcon icon="ri-more-2-line" />
-
-            <VMenu activator="parent">
-              <VList>
-                <VListItem link>
-                  <template #prepend>
-                    <VIcon icon="ri-download-line" />
-                  </template>
-                  <VListItemTitle>Download</VListItemTitle>
-                </VListItem>
-                <VListItem link>
-                  <template #prepend>
-                    <VIcon icon="ri-edit-box-line" />
-                  </template>
-                  <VListItemTitle>Edit</VListItemTitle>
-                </VListItem>
-              </VList>
-            </VMenu>
-          </IconBtn>
         </template>
 
         <!-- Pagination -->

@@ -9,6 +9,7 @@ import authV2LoginIllustrationLight from '@images/pages/auth-v2-login-illustrati
 import authV2LoginMaskDark from '@images/pages/auth-v2-login-mask-dark.png'
 import authV2LoginMaskLight from '@images/pages/auth-v2-login-mask-light.png'
 import { VNodeRenderer } from '@layouts/components/VNodeRenderer'
+import {inject} from "vue"
 
 const authThemeImg = useGenerateImageVariant(authV2LoginIllustrationLight, authV2LoginIllustrationDark, authV2LoginIllustrationBorderedLight, authV2LoginIllustrationBorderedDark, true)
 const authThemeMask = useGenerateImageVariant(authV2LoginMaskLight, authV2LoginMaskDark)
@@ -26,43 +27,108 @@ const router = useRouter()
 const ability = useAbility()
 
 const errors = ref({
-  email: undefined,
+  username: undefined,
   password: undefined,
 })
 
 const refVForm = ref()
 
 const credentials = ref({
-  email: 'admin@demo.com',
-  password: 'admin',
+  username: '',
+  password: '',
 })
 
 const rememberMe = ref(false)
+const axios = inject("axios")
 
-const login = async () => {
+async function login () {
+  
+  axios.defaults.headers.common["Authorization"] = ""
+  localStorage.removeItem('token')
+
+  const formData = {
+    username: credentials.value.username,
+    password: credentials.value.password,
+  }
+
   try {
-    const res = await $api('/auth/login', {
-      method: 'POST',
-      body: {
-        email: credentials.value.email,
-        password: credentials.value.password,
-      },
-      onResponseError({ response }) {
-        errors.value = response._data.errors
+    // Send login request
+    const loginResponse = await axios.post("/api/v1/token/login/", formData)
+    const token = loginResponse.data.auth_token
+
+    axios.defaults.headers.common["Authorization"] = "Token " + token
+    localStorage.setItem("token", token)
+
+    // Retrieve user data
+    const userResponse = await axios.get(`/api/v1/users/${credentials.value.username}`, {
+      headers: {
+        Authorization: `Token ${token}`,
       },
     })
 
-    const { accessToken, userData, userAbilityRules } = res
+    const role = userResponse.data.is_admin
+      ? { role: "admin", abilityRules: [
+        {
+          action: 'manage',
+          subject: 'all',
+        },
+      ] }
+      : { role: "store owner", abilityRules: [
+        {
+          action: 'read',
+          subject: 'AclDemo',
+        },
+      ] }
 
-    useCookie('userAbilityRules').value = userAbilityRules
-    ability.update(userAbilityRules)
-    useCookie('userData').value = userData
-    useCookie('accessToken').value = accessToken
-    await nextTick(() => {
-      router.replace(route.query.to ? String(route.query.to) : '/')
-    })
-  } catch (err) {
-    console.error(err)
+    const user = {
+      id: userResponse.data.id,
+      fullName: userResponse.data.first_name + " " + userResponse.data.last_name,
+      username: userResponse.data.username,
+      email: userResponse.data.email,
+      role: role.role,
+      abilityRules: role.abilityRules,
+    }
+
+    try {
+      const res = await $api('/auth/login', {
+        method: 'POST',
+        body: {
+          data: user,
+        },
+        onResponseError({ response }) {
+          errors.value = response._data.errors
+        },
+      })
+
+      const { accessToken, userData, userAbilityRules } = res
+
+      useCookie('userAbilityRules').value = userAbilityRules
+      ability.update(userAbilityRules)
+      useCookie('userData').value = userData
+      useCookie('accessToken').value = accessToken
+      await nextTick(() => {
+        router.replace(route.query.to ? String(route.query.to) : '/')
+      })
+    } catch (err) {
+      console.error(err)
+    }
+
+  } catch (error) {
+    console.log(error)
+
+    // Handle errors
+    if (error.response) {
+      for (const property in error.response.data) {
+        this.errors.push(`${property}: ${error.response.data[property]}`)
+      }
+      console.log(JSON.stringify(error.response.data))
+    } else if (error.message) {
+      this.errors.push(error.message)
+      console.log(JSON.stringify(error.message))
+    } else {
+      this.errors.push("An unknown error occurred")
+      console.log(JSON.stringify(error))
+    }
   }
 }
 
@@ -125,19 +191,6 @@ const onSubmit = () => {
             Please sign-in to your account and start the adventure
           </p>
         </VCardText>
-        <VCardText>
-          <VAlert
-            color="primary"
-            variant="tonal"
-          >
-            <p class="text-caption mb-2 text-primary">
-              Admin Email: <strong>admin@demo.com</strong> / Pass: <strong>admin</strong>
-            </p>
-            <p class="text-caption mb-0 text-primary">
-              Client Email: <strong>client@demo.com</strong> / Pass: <strong>client</strong>
-            </p>
-          </VAlert>
-        </VCardText>
 
         <VCardText>
           <VForm
@@ -145,16 +198,16 @@ const onSubmit = () => {
             @submit.prevent="onSubmit"
           >
             <VRow>
-              <!-- email -->
+              <!-- username -->
               <VCol cols="12">
                 <VTextField
-                  v-model="credentials.email"
-                  label="Email"
-                  placeholder="johndoe@email.com"
-                  type="email"
+                  v-model="credentials.username"
+                  label="Username"
+                  placeholder="Username"
+                  type="text"
                   autofocus
-                  :rules="[requiredValidator, emailValidator]"
-                  :error-messages="errors.email"
+                  :rules="[requiredValidator]"
+                  :error-messages="errors.username"
                 />
               </VCol>
 

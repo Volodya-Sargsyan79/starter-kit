@@ -3,10 +3,12 @@ import destr from 'destr'
 import { HttpResponse, http } from 'msw'
 import { db } from '@db/apps/users/db'
 import { paginateArray } from '@api-utils/paginateArray'
+import axios from 'axios'
 
 export const handlerAppsUsers = [
   // Get Users Details
-  http.get(('/api/apps/users'), ({ request }) => {
+  http.get(('/api/apps/users'), async({ request }) => {
+
     const url = new URL(request.url)
     const q = url.searchParams.get('q')
     const role = url.searchParams.get('role')
@@ -27,8 +29,11 @@ export const handlerAppsUsers = [
     const itemsPerPageLocal = is.number(parsedItemsPerPage) ? parsedItemsPerPage : 10
     const pageLocal = is.number(parsedPage) ? parsedPage : 1
 
+    
     // filter users
-    let filteredUsers = db.users.filter(user => ((user.fullName.toLowerCase().includes(queryLower) || user.email.toLowerCase().includes(queryLower)) && user.role === (role || user.role) && user.currentPlan === (plan || user.currentPlan) && user.status === (status || user.status))).reverse()
+    let filteredUsers = db.users
+    
+    console.log(filteredUsers, 111111)
 
     // sort users
     if (sortByLocal) {
@@ -54,14 +59,6 @@ export const handlerAppsUsers = [
             return a.role.localeCompare(b.role)
           else
             return b.role.localeCompare(a.role)
-        })
-      }
-      if (sortByLocal === 'plan') {
-        filteredUsers = filteredUsers.sort((a, b) => {
-          if (orderByLocal === 'asc')
-            return a.currentPlan.localeCompare(b.currentPlan)
-          else
-            return b.currentPlan.localeCompare(a.currentPlan)
         })
       }
       if (sortByLocal === 'status') {
