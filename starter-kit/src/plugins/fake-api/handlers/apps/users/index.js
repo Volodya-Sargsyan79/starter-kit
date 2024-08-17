@@ -1,18 +1,15 @@
-// New! Keyboard shortcuts … Drive keyboard shortcuts have been updated to give you first-letters navigation
+import { paginateArray } from '@api-utils/paginateArray'
+import { db } from '@db/apps/users/db'
 import is from '@sindresorhus/is'
 import destr from 'destr'
 import { HttpResponse, http } from 'msw'
-import { db } from '@db/apps/users/db'
-import { paginateArray } from '@api-utils/paginateArray'
 
 export const handlerAppsUsers = [
   // Get Users Details
-  http.get(('/api/apps/users'), ({ request }) => {
+  http.get('/api/apps/users', async ({ request }) => {
     const url = new URL(request.url)
     const q = url.searchParams.get('q')
     const role = url.searchParams.get('role')
-    const plan = url.searchParams.get('plan')
-    const status = url.searchParams.get('status')
     const sortBy = url.searchParams.get('sortBy')
     const itemsPerPage = url.searchParams.get('itemsPerPage')
     const page = url.searchParams.get('page')
@@ -29,15 +26,23 @@ export const handlerAppsUsers = [
     const pageLocal = is.number(parsedPage) ? parsedPage : 1
 
     // filter users
-    let filteredUsers = db.users.filter(user => ((user.fullName.toLowerCase().includes(queryLower) || user.email.toLowerCase().includes(queryLower)) && user.role === (role || user.role) && user.currentPlan === (plan || user.currentPlan) && user.status === (status || user.status))).reverse()
+    await db.getUser()
+    console.log(role)
+    let filteredUsers = db.users.filter(user =>
+      (user.username.toLowerCase().includes(searchQuery) ||
+       user.email.toLowerCase().includes(searchQuery)) &&
+      (role === "is_admin" ? user.is_admin === true : true ) &&
+      (role === "is_store_owner" ? user.is_store_owner === true : true )
+    )
+
     // sort users
     if (sortByLocal) {
       if (sortByLocal === 'user') {
         filteredUsers = filteredUsers.sort((a, b) => {
           if (orderByLocal === 'asc')
-            return a.fullName.localeCompare(b.fullName)
+            return a.first_name.localeCompare(b.first_name)
           else
-            return b.fullName.localeCompare(a.fullName)
+            return b.first_name.localeCompare(a.first_name)
         })
       }
       if (sortByLocal === 'email') {
@@ -46,30 +51,6 @@ export const handlerAppsUsers = [
             return a.email.localeCompare(b.email)
           else
             return b.email.localeCompare(a.email)
-        })
-      }
-      if (sortByLocal === 'role') {
-        filteredUsers = filteredUsers.sort((a, b) => {
-          if (orderByLocal === 'asc')
-            return a.role.localeCompare(b.role)
-          else
-            return b.role.localeCompare(a.role)
-        })
-      }
-      if (sortByLocal === 'plan') {
-        filteredUsers = filteredUsers.sort((a, b) => {
-          if (orderByLocal === 'asc')
-            return a.currentPlan.localeCompare(b.currentPlan)
-          else
-            return b.currentPlan.localeCompare(a.currentPlan)
-        })
-      }
-      if (sortByLocal === 'status') {
-        filteredUsers = filteredUsers.sort((a, b) => {
-          if (orderByLocal === 'asc')
-            return a.status.localeCompare(b.status)
-          else
-            return b.status.localeCompare(a.status)
         })
       }
     }
