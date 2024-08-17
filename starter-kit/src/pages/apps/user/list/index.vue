@@ -2,8 +2,8 @@
 import AddNewUserDrawer from '@/views/apps/user/list/AddNewUserDrawer.vue'
 import {inject} from "vue"
 
+
 // 👉 Store
-const searchQuery = ref('')
 const selectedRole = ref()
 const selectedPlan = ref()
 const selectedStatus = ref()
@@ -11,9 +11,10 @@ const selectedStatus = ref()
 // Data table options
 const itemsPerPage = ref(10)
 const page = ref(1)
-const sortBy = ref()
 const orderBy = ref()
+const sortBy = ref()
 const selectedRows = ref([])
+
 const axios = inject("axios")
 
 const updateOptions = options => {
@@ -37,17 +38,13 @@ const headers = [
     key: 'role',
   },
   {
-    title: 'Status',
-    key: 'status',
-  },
-  {
     title: 'Actions',
     key: 'actions',
     sortable: false,
   },
 ]
 
-const users = ref([])
+const usersData = ref([])
 
 async function getUser() {
   const token = localStorage.getItem("token")
@@ -57,34 +54,14 @@ async function getUser() {
         Authorization: `Token ${token}`,
       },
     })
-    
-    users.value = response.data
-
+    usersData.value = response.data
   } catch (error) {
     console.log(error.response || error)
   }
-} getUser()
+}
 
-console.log(users, 132214)
-
-// const {
-//   data: usersData,
-//   execute: fetchUsers,
-// } = await useApi(createUrl('/apps/users', {
-//   query: {
-//     q: searchQuery,
-//     status: selectedStatus,
-//     plan: selectedPlan,
-//     role: selectedRole,
-//     itemsPerPage,
-//     page,
-//     sortBy,
-//     orderBy,
-//   },
-// }))
-
-// const users = computed(() => usersData.value.users)
-// const totalUsers = computed(() => usersData.value.totalUsers)
+const users = computed(() => usersData.value)
+const totalUsers = computed(() => usersData.value.length)
 
 // 👉 search filters
 const roles = [
@@ -93,79 +70,65 @@ const roles = [
     value: 'admin',
   },
   {
-    title: 'Author',
-    value: 'author',
-  },
-  {
-    title: 'Editor',
-    value: 'editor',
-  },
-  {
-    title: 'Maintainer',
-    value: 'maintainer',
-  },
-  {
-    title: 'Subscriber',
-    value: 'subscriber',
-  },
+    title: 'Store Owner',
+    value: 'store_owner',
+  }
 ]
 
-const status = [
-  {
-    title: 'Pending',
-    value: 'Pending',
-  },
-  {
-    title: 'Active',
-    value: 'Active',
-  },
-  {
-    title: 'Inactive',
-    value: 'Inactive',
-  },
-]
 
-// const resolveUserRoleVariant = role => {
-//   const roleLowerCase = role.toLowerCase()
-//   if (roleLowerCase === 'subscriber')
-//     return {
-//       color: 'success',
-//       icon: 'ri-user-line',
-//     }
-//   if (roleLowerCase === 'author')
-//     return {
-//       color: 'error',
-//       icon: 'ri-computer-line',
-//     }
-//   if (roleLowerCase === 'maintainer')
-//     return {
-//       color: 'info',
-//       icon: 'ri-pie-chart-line',
-//     }
-//   if (roleLowerCase === 'editor')
-//     return {
-//       color: 'warning',
-//       icon: 'ri-edit-box-line',
-//     }
-//   if (roleLowerCase === 'admin')
-//     return {
-//       color: 'primary',
-//       icon: 'ri-vip-crown-line',
-//     }
+const resolveUserRoleVariant = role => {
+  const roleLowerCase = role
+  if (!roleLowerCase)
+    return {
+      color: 'warning',
+      icon: 'ri-edit-box-line',
+    }
+  if (roleLowerCase)
+    return {
+      color: 'primary',
+      icon: 'ri-vip-crown-line',
+    }
+  
+  return {
+    color: 'success',
+    icon: 'ri-user-line',
+  }
+}
 
-//   return {
-//     color: 'success',
-//     icon: 'ri-user-line',
-//   }
-// }
+const isAddNewUserDrawerVisible = ref(false)
 
-// const isAddNewUserDrawerVisible = ref(false)
+const addNewUser = async userData => {
 
+  // userListStore.addUser(userData)
+  await $api('/apps/users', {
+    method: 'POST',
+    body: userData,
+  })
 
+  // Refetch User
+  fetchUsers()
+}
+
+const deleteUser = async id => {
+  await $api(`/apps/users/${ id }`, { method: 'DELETE' })
+
+  // Delete from selectedRows
+  const index = selectedRows.value.findIndex(row => row === id)
+  if (index !== -1)
+    selectedRows.value.splice(index, 1)
+
+  // Refetch User
+  fetchUsers()
+}
+
+onMounted(() => {
+  getUser()
+});
 </script>
 
 <template>
   <section>
+
     <VCard class="mb-6">
       <VCardItem class="pb-4">
         <VCardTitle>Filters</VCardTitle>
@@ -186,29 +149,18 @@ const status = [
               clear-icon="ri-close-line"
             />
           </VCol>
-
-          <!-- 👉 Select Status -->
+          <!-- 👉 Select Plan -->
           <VCol
             cols="12"
             sm="4"
           >
-            <VSelect
-              v-model="selectedStatus"
-              label="Select Status"
-              placeholder="Select Status"
-              :items="status"
-              clearable
-              clear-icon="ri-close-line"
-            />
           </VCol>
-        </VRow>
-      </VCardText>
 
-      <VDivider />
-
-      <VCardText class="d-flex flex-wrap gap-4 align-center">
-        <VSpacer />
-        <div class="d-flex align-center gap-4 flex-wrap">
+          <VCol
+            cols="12"
+            sm="4"
+          >
+          <div class="d-flex align-center gap-4 flex-wrap">
           <!-- 👉 Search  -->
           <div class="app-user-search-filter">
             <VTextField
@@ -222,7 +174,13 @@ const status = [
             Add New User
           </VBtn>
         </div>
+          </VCol>
+        </VRow>
       </VCardText>
+
+      <VDivider />
+
+      <VCardText class="d-flex flex-wrap gap-4 align-center"/>
 
       <!-- SECTION datatable -->
       <VDataTableServer
@@ -243,27 +201,72 @@ const status = [
             <VAvatar
               size="34"
               :variant="!item.avatar ? 'tonal' : undefined"
-              :color="!item.avatar ? resolveUserRoleVariant(item.role).color : undefined"
+              :color="!item.avatar ? resolveUserRoleVariant(item.is_admin).color : undefined"
               class="me-3"
             >
               <VImg
                 v-if="item.avatar"
                 :src="item.avatar"
               />
-              <span v-else>{{ avatarText(item.username) }}</span>
+              <span v-else>{{ avatarText(item.first_name) }}</span>
             </VAvatar>
 
             <div class="d-flex flex-column">
-              <RouterLink
-                :to="{ name: 'apps-user-view-id', params: { id: item.id } }"
-                class="text-link text-base font-weight-medium"
-              >
-                {{ item.first_name }} {{ item.last_name }}
-              </RouterLink>
-
-              <span class="text-sm text-medium-emphasis">@{{ item.username }}</span>
+              <span class="text-sm text-medium-emphasis">{{ item.first_name }} {{ item.last_name }}</span>
             </div>
           </div>
+        </template>
+
+        <!-- Role -->
+        <template #item.role="{ item }">
+          <div class="d-flex gap-2">
+            <VIcon
+              :icon="resolveUserRoleVariant(item.is_admin).icon"
+              :color="resolveUserRoleVariant(item.is_admin).color"
+              size="22"
+            />
+            <span class="text-capitalize text-high-emphasis">{{ item.is_admin ? "Admin" : "Store Owner" }}</span>
+          </div>
+        </template>
+                
+        <!-- Actions -->
+        <template #item.actions="{ item }">
+          <IconBtn
+            size="small"
+          >
+            <VIcon icon="ri-delete-bin-7-line" />
+          </IconBtn>
+
+          <IconBtn
+            size="small"
+            :to="{ name: 'apps-user-view-id', params: { id: item.id } }"
+          >
+            <VIcon icon="ri-eye-line" />
+          </IconBtn>
+
+          <IconBtn
+            size="small"
+            color="medium-emphasis"
+          >
+            <VIcon icon="ri-more-2-line" />
+
+            <VMenu activator="parent">
+              <VList>
+                <VListItem link>
+                  <template #prepend>
+                    <VIcon icon="ri-download-line" />
+                  </template>
+                  <VListItemTitle>Download</VListItemTitle>
+                </VListItem>
+                <VListItem link>
+                  <template #prepend>
+                    <VIcon icon="ri-edit-box-line" />
+                  </template>
+                  <VListItemTitle>Edit</VListItemTitle>
+                </VListItem>
+              </VList>
+            </VMenu>
+          </IconBtn>
         </template>
 
         <!-- Pagination -->

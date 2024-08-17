@@ -1,6 +1,9 @@
-import axios from 'axios'
+import {inject} from "vue"
+
+const axios = inject("axios")
 
 export const db = {
+
   users: [], // Initial empty array to store users
   errors: [], // Array to store error messages
 
@@ -16,7 +19,6 @@ export const db = {
 
       // Set the users array with the response data
       this.users = response.data
-      console.log(response.data)
     } catch (error) {
       // Store error message in the errors array
       this.errors.push(error.response ? error.response.data : error.message)

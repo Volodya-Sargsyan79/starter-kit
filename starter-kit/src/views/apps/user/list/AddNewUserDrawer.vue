@@ -40,39 +40,32 @@ const closeNavigationDrawer = () => {
   })
 }
 
-const onSubmit = () => {
-  const formData = {
+async function onSubmit() {
+  const formData = {    
     username: credentials.value.username,
+    first_name: credentials.value.first_name,
+    last_name: credentials.value.last_name,
     email: credentials.value.email,
     password: credentials.value.password,
-    is_admin: false,
-    is_store_owner: true,
+    is_admin: credentials.value.role=="Admin" ? true : false,
+    is_store_owner: credentials.value.role=="Store owner" ? true : false,
   }
 
   console.log("Form Data:", formData) // Add this to inspect the data
 
   const token = localStorage.getItem("token")
-
-  axios
-    .post("/api/v1/users/add-store-owner/", formData)
-    .then(response => {
-      console.log("User added successfully:", response.data)
+  try {
+    await axios.post("/api/v1/users/add-store-owner/", formData, {
+      headers: {
+        Authorization: `Token ${token}`,
+      },
     })
-    .catch((error) => {
-      errors.value = [] // Clear previous errors
-      if (error.response) {
-        for (const property in error.response.data) {
-          errors.value.push(`${property}: ${error.response.data[property]}`)
-        }
-        console.error("Error response:", error.response)
-      } else if (error.message) {
-        errors.value.push("Something went wrong. Please try again!")
-        console.error("Error message:", error.message)
-      } else {
-        errors.value.push("Something went wrong. Please try again!")
-        console.error("Error:", error)
-      }
+    .then((response) => {
+      closeNavigationDrawer()
     })
+  } catch (error) {
+    console.log(error.response || error)
+  }
 }
 
 const handleDrawerModelValueUpdate = val => {
