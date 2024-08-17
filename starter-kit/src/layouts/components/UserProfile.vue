@@ -1,6 +1,5 @@
 <script setup>
 import { PerfectScrollbar } from 'vue3-perfect-scrollbar'
-import {inject} from "vue"
 
 const router = useRouter()
 const ability = useAbility()
@@ -8,30 +7,24 @@ const ability = useAbility()
 // TODO: Get type from backend
 const userData = useCookie('userData')
 
-const axios = inject("axios")
+const logout = async () => {
 
-async function  logout() {
-  await axios
-    .post("/api/v1/token/logout/")
-    .then((response) => {
-      await axios.defaults.headers.common["Authorization"] = "";
+  // Remove "accessToken" from cookie
+  useCookie('accessToken').value = null
 
-      localStorage.removeItem("token");
+  // Remove "userData" from cookie
+  userData.value = null
 
-      store.commit("removeToken");
+  // Redirect to login page
+  await router.push('/login')
 
-      await router.push('/login')
+  // ℹ️ We had to remove abilities in then block because if we don't nav menu items mutation is visible while redirecting user to login page
 
-      useCookie('userAbilityRules').value = null
-    })
-    .catch((error) => {
-      console.error("Logout error:", error);
-      if (error.response && error.response.status === 401) {
-        this.$router.push("/log-in");
-      } else {
-        alert("An error occurred during logout.");
-      }
-    });
+  // Remove "userAbilities" from cookie
+  useCookie('userAbilityRules').value = null
+
+  // Reset ability to initial ability
+  ability.update([])
 }
 
 const userProfileList = [

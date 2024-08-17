@@ -1,21 +1,16 @@
 <script setup>
 import AddNewUserDrawer from '@/views/apps/user/list/AddNewUserDrawer.vue'
-import {inject} from "vue"
-
 
 // 👉 Store
+const searchQuery = ref('')
 const selectedRole = ref()
-const selectedPlan = ref()
-const selectedStatus = ref()
 
 // Data table options
 const itemsPerPage = ref(10)
 const page = ref(1)
-const orderBy = ref()
 const sortBy = ref()
+const orderBy = ref()
 const selectedRows = ref([])
-
-const axios = inject("axios")
 
 const updateOptions = options => {
   page.value = options.page
@@ -44,51 +39,36 @@ const headers = [
   },
 ]
 
-const usersData = ref([])
+const {
+  data: usersData,
+  execute: fetchUsers,
+} = await useApi(createUrl('/apps/users', {
+  query: {
+    q: searchQuery,
+    role: selectedRole,
+    itemsPerPage,
+    page,
+    sortBy,
+    orderBy,
+  },
+}))
 
-async function getUser() {
-  const token = localStorage.getItem("token")
-  try {
-    const response = await axios.get("/api/v1/users/", {
-      headers: {
-        Authorization: `Token ${token}`,
-      },
-    })
-    usersData.value = response.data
-  } catch (error) {
-    console.log(error.response || error)
-  }
-}
-
-const users = computed(() => usersData.value)
-const totalUsers = computed(() => usersData.value.length)
+const users = computed(() => usersData.value.users)
+const totalUsers = computed(() => usersData.value.totalUsers)
 
 // 👉 search filters
 const roles = [
   {
     title: 'Admin',
-    value: 'admin',
+    value: 'is_admin',
   },
   {
     title: 'Store Owner',
-    value: 'store_owner',
+    value: 'is_store_owner',
   }
 ]
 
-
-const resolveUserRoleVariant = role => {
-  const roleLowerCase = role
-  if (!roleLowerCase)
-    return {
-      color: 'warning',
-      icon: 'ri-edit-box-line',
-    }
-  if (roleLowerCase)
-    return {
-      color: 'primary',
-      icon: 'ri-vip-crown-line',
-    }
-  
+const resolveUserRoleVariant = () =>{  
   return {
     color: 'success',
     icon: 'ri-user-line',
@@ -121,14 +101,11 @@ const deleteUser = async id => {
   fetchUsers()
 }
 
-onMounted(() => {
-  getUser()
-});
 </script>
 
 <template>
   <section>
-
+    <!-- 👉 Widgets -->
     <VCard class="mb-6">
       <VCardItem class="pb-4">
         <VCardTitle>Filters</VCardTitle>
@@ -149,38 +126,33 @@ onMounted(() => {
               clear-icon="ri-close-line"
             />
           </VCol>
-          <!-- 👉 Select Plan -->
+          <VCol
+            cols="12"
+            sm="4"
+          />
           <VCol
             cols="12"
             sm="4"
           >
-          </VCol>
-
-          <VCol
-            cols="12"
-            sm="4"
-          >
-          <div class="d-flex align-center gap-4 flex-wrap">
-          <!-- 👉 Search  -->
-          <div class="app-user-search-filter">
-            <VTextField
-              v-model="searchQuery"
-              placeholder="Search User"
-              density="compact"
-            />
-          </div>
-          <!-- 👉 Add user button -->
-          <VBtn @click="isAddNewUserDrawerVisible = true">
-            Add New User
-          </VBtn>
-        </div>
+            <div class="d-flex align-center gap-4 flex-wrap">
+              <!-- 👉 Search  -->
+              <div class="app-user-search-filter">
+                <VTextField
+                  v-model="searchQuery"
+                  placeholder="Search User"
+                  density="compact"
+                />
+              </div>
+              <!-- 👉 Add user button -->
+              <VBtn @click="isAddNewUserDrawerVisible = true">
+                Add New User
+              </VBtn>
+            </div>
           </VCol>
         </VRow>
       </VCardText>
 
       <VDivider />
-
-      <VCardText class="d-flex flex-wrap gap-4 align-center"/>
 
       <!-- SECTION datatable -->
       <VDataTableServer
@@ -201,38 +173,39 @@ onMounted(() => {
             <VAvatar
               size="34"
               :variant="!item.avatar ? 'tonal' : undefined"
-              :color="!item.avatar ? resolveUserRoleVariant(item.is_admin).color : undefined"
+              :color="!item.avatar ? resolveUserRoleVariant(item.role).color : undefined"
               class="me-3"
             >
               <VImg
                 v-if="item.avatar"
                 :src="item.avatar"
               />
-              <span v-else>{{ avatarText(item.first_name) }}</span>
+              <span v-else>{{ avatarText(item.first_name) }}{{ avatarText(item.last_name) }}</span>
             </VAvatar>
 
             <div class="d-flex flex-column">
-              <span class="text-sm text-medium-emphasis">{{ item.first_name }} {{ item.last_name }}</span>
+              {{ item.first_name }} {{ item.last_name }}
+              <span class="text-sm text-medium-emphasis">@{{ item.username }}</span>
             </div>
           </div>
         </template>
-
         <!-- Role -->
         <template #item.role="{ item }">
           <div class="d-flex gap-2">
             <VIcon
-              :icon="resolveUserRoleVariant(item.is_admin).icon"
-              :color="resolveUserRoleVariant(item.is_admin).color"
+              :icon="resolveUserRoleVariant(item.role).icon"
+              :color="resolveUserRoleVariant(item.role).color"
               size="22"
             />
             <span class="text-capitalize text-high-emphasis">{{ item.is_admin ? "Admin" : "Store Owner" }}</span>
           </div>
         </template>
-                
+
         <!-- Actions -->
         <template #item.actions="{ item }">
           <IconBtn
             size="small"
+            @click="deleteUser(item.id)"
           >
             <VIcon icon="ri-delete-bin-7-line" />
           </IconBtn>
